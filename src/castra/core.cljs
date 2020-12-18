@@ -9,7 +9,6 @@
 (ns castra.core
   (:require
     [cognitect.transit :as t]
-    [javelin.core :as j :refer [cell?]]
     [cljsjs.jquery]))
 
 ;; helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -87,7 +86,7 @@
                      "X-Castra-Tunnel"        "transit"
                      "X-Castra-Validate-Only" (str (boolean *validate-only*))
                      "Accept"                 "application/transit+json"}
-                    (merge (if (cell? additional-headers)
+                    (merge (if (instance? javeline.core.Cell additional-headers)
                                @additional-headers
                                additional-headers))
                     (assoc-when "X-Castra-Session" (get-session)))
