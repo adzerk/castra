@@ -24,7 +24,24 @@
   (let [e (if (ex? e) e (dfl-ex e))]
     {:message (.getMessage e)
      :data    (ex-data e)
-     :stack   (strip-ansi
+     ;; Commenting out `:stack`
+     ;; This is required for security compliance:
+     ;;
+     ;; - This information might help an attacker gain more information and potentially
+     ;;   focus on the development of further attacks for the target system.
+     ;;
+     ;;- An attacker can understand internal workflow by analyzing stack traces.
+     ;;
+     ;;- The stack trace can disclose potentially sensitive information such as:
+     ;;    - physical file paths of relevant files
+     ;;    - source code fragments
+     ;;    - version information of various packages
+     ;;    - database information
+     ;;    - error messages
+     ;;
+     ;; Please see [sc-28285] for more context
+     ;; TODO: Consider adding an option to conditionally add this for Adzerk Admins
+     #_#_:stack   (strip-ansi
                 (with-out-str
                   (try (print-cause-trace e)
                        (catch Throwable x
