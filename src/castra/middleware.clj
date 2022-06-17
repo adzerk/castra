@@ -125,7 +125,7 @@
                 (assoc-in [:headers "X-Castra-Session"] data'))))))))
 
 (defn wrap-castra [handler & [opts & more :as namespaces]]
-  (let [{:keys [body-keys state-fn] :as opts}
+  (let [{:keys [body-keys state-fn exception-handler] :as opts}
         (when (map? opts) opts)
 
         nses
@@ -151,6 +151,8 @@
                 f #(do (csrf!) (do-rpc (vars) (expression body-keys req)))
                 d (try (response body-keys req {:result (f) :state (when state-fn (state-fn))})
                        (catch Throwable e
+                         (when exception-handler
+                           (exception-handler e))
                          (response body-keys req {:error (ex->clj e)})))]
             {:status 200, :headers h, :body d, :session @*session*}))))))
 
