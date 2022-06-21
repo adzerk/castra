@@ -42,12 +42,12 @@
      ;; Please see [sc-28285] for more context
      ;; TODO: Consider adding an option to conditionally add this for Adzerk Admins
      #_#_:stack   (strip-ansi
-                (with-out-str
-                  (try (print-cause-trace e)
-                       (catch Throwable x
-                         (try (print-stack-trace e)
-                              (catch Throwable x
-                                (printf "No stack trace: %s" (.getMessage x))))))))}))
+                   (with-out-str
+                     (try (print-cause-trace e)
+                          (catch Throwable x
+                            (try (print-stack-trace e)
+                                 (catch Throwable x
+                                   (printf "No stack trace: %s" (.getMessage x))))))))}))
 
 (defn- csrf! []
   (when-not (get-in *request* [:headers "x-castra-csrf"])
@@ -125,11 +125,20 @@
                 (assoc-in [:headers "X-Castra-Session"] data'))))))))
 
 (defn wrap-castra [handler & [opts & more :as namespaces]]
-  (let [{:keys [body-keys state-fn] :as opts} (when (map? opts) opts)
-        nses (if opts more namespaces)
-        head {"X-Castra-Tunnel" "transit"}
-        seq* #(or (try (seq %) (catch Throwable e)) [%])
-        vars (fn [] (->> nses (map seq*) (mapcat #(apply select-vars %)) set))]
+  (let [{:keys [body-keys state-fn exception-handler] :as opts}
+        (when (map? opts) opts)
+
+        nses
+        (if opts more namespaces)
+
+        head
+        {"X-Castra-Tunnel" "transit"}
+
+        seq*
+        #(or (try (seq %) (catch Throwable e)) [%])
+
+        vars
+        (fn [] (->> nses (map seq*) (mapcat #(apply select-vars %)) set))]
     (fn [req]
       (if-not (castra-req? req)
         (handler req)
@@ -142,6 +151,8 @@
                 f #(do (csrf!) (do-rpc (vars) (expression body-keys req)))
                 d (try (response body-keys req {:result (f) :state (when state-fn (state-fn))})
                        (catch Throwable e
+                         (when exception-handler
+                           (exception-handler e))
                          (response body-keys req {:error (ex->clj e)})))]
             {:status 200, :headers h, :body d, :session @*session*}))))))
 
