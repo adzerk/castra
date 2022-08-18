@@ -54,7 +54,10 @@
     (throw (ex-info "Invalid CSRF token" {}))))
 
 (defn- do-rpc [vars [f & args]]
-  (let [bad!  #(throw (ex-info "RPC endpoint not found" {:endpoint (symbol f)}))
+  (let [bad!  #(throw (ex-info
+                        "RPC endpoint not found"
+                        {:error-code :castra/rpc-endpoint-not-found
+                         :endpoint   (symbol f)}))
         fun   (or (resolve (symbol f)) (bad!))]
     (when-not (contains? vars fun) (bad!))
     (apply fun args)))
