@@ -128,7 +128,9 @@
                 (assoc-in [:headers "X-Castra-Session"] data'))))))))
 
 (defn wrap-castra [handler & [opts & more :as namespaces]]
-  (let [{:keys [body-keys state-fn exception-handler] :as opts}
+  (let [{:keys [body-keys state-fn exception-handler
+                parsed-request-body-handler]
+         :as opts}
         (when (map? opts) opts)
 
         nses
@@ -151,7 +153,12 @@
                   *session*       (atom (:session req))
                   *validate-only* (= "true" (get-in req [:headers "x-castra-validate-only"]))]
           (let [h (headers req head {"Content-Type" "application/json;charset=utf-8"})
-                f #(do (csrf!) (do-rpc (vars) (expression body-keys req)))
+                f #(do
+                     (csrf!)
+                     (let [parsed-req-body (expression body-keys req)]
+                       (when parsed-request-body-handler
+                         (parsed-request-body-handler parsed-req-body))
+                       (do-rpc (vars) parsed-req-body)))
                 d (try (response body-keys req {:result (f) :state (when state-fn (state-fn))})
                        (catch Throwable e
                          (when exception-handler
