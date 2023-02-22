@@ -31,12 +31,20 @@
     (catch Throwable _
       nil)))
 
-(defn- do-rpc [vars [f & args]]
-  (let [bad!  #(throw (ex-info
-                        "RPC endpoint not found"
-                        {:error-code :castra/rpc-endpoint-not-found
-                         :endpoint   (or (safe-symbol f) f)}))
-        fun   (or (safe-resolve-symbol f) (bad!))]
+(defn- do-rpc
+  [vars input]
+  ;; `input` is some unknown value read from the Transit-encoded request body.
+  ;; It might not be seqable, so we have to check here in order to avoid
+  ;; throwing an exception. If it's an unseqable value (e.g. a number), then `f`
+  ;; and `args` end up being nil below, and we treat that scenario as bad user
+  ;; input, equivalent to "RPC endpoint not found."
+  (let [[f & args] (when (seqable? input) input)
+        bad!       #(throw (ex-info
+                             "RPC endpoint not found"
+                             {:error-code :castra/rpc-endpoint-not-found
+                              :endpoint   (or (safe-symbol f) f)
+                              :input      (when-not f input)}))
+        fun        (or (safe-resolve-symbol f) (bad!))]
     (when-not (contains? vars fun) (bad!))
     (apply fun args)))
 
