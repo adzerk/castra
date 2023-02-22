@@ -93,17 +93,17 @@
           (let [h
                 (headers req head {"Content-Type" "application/json;charset=utf-8"})
 
-                result
-                (let [parsed-req-body (expression body-keys req)]
-                  (when parsed-request-body-handler
-                    (parsed-request-body-handler parsed-req-body))
-                  (do-rpc (vars) parsed-req-body))
+                f
+                #(let [parsed-req-body (expression body-keys req)]
+                   (when parsed-request-body-handler
+                     (parsed-request-body-handler parsed-req-body))
+                   (do-rpc (vars) parsed-req-body))
 
                 d
                 (try (response
                        body-keys
                        req
-                       {:result result :state (when state-fn (state-fn))})
+                       {:result (f) :state (when state-fn (state-fn))})
                      (catch Throwable e
                        (when exception-handler
                          (exception-handler e))
