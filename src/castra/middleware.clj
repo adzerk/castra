@@ -94,16 +94,24 @@
                   *request*       req
                   *session*       (atom (:session req))
                   *validate-only* (= "true" (get-in req [:headers "x-castra-validate-only"]))]
-          (let [h (headers req head {"Content-Type" "application/json;charset=utf-8"})
-                f #(do
-                     (csrf!)
-                     (let [parsed-req-body (expression body-keys req)]
-                       (when parsed-request-body-handler
-                         (parsed-request-body-handler parsed-req-body))
-                       (do-rpc (vars) parsed-req-body)))
-                d (try (response body-keys req {:result (f) :state (when state-fn (state-fn))})
-                       (catch Throwable e
-                         (when exception-handler
-                           (exception-handler e))
-                         (response body-keys req {:error (ex->clj e)})))]
+          (let [h
+                (headers req head {"Content-Type" "application/json;charset=utf-8"})
+
+                result
+                (do
+                  (csrf!)
+                  (let [parsed-req-body (expression body-keys req)]
+                    (when parsed-request-body-handler
+                      (parsed-request-body-handler parsed-req-body))
+                    (do-rpc (vars) parsed-req-body)))
+
+                d
+                (try (response
+                       body-keys
+                       req
+                       {:result result :state (when state-fn (state-fn))})
+                     (catch Throwable e
+                       (when exception-handler
+                         (exception-handler e))
+                       (response body-keys req {:error (ex->clj e)})))]
             {:status 200, :headers h, :body d, :session @*session*}))))))
