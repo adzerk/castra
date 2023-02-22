@@ -20,19 +20,28 @@
     (catch Throwable _
       nil)))
 
+(defn- safe-resolve-symbol
+  "Attempts to coerce the provided value as a symbol and resolve it.
+
+   Returns nil if anything goes wrong."
+  [& symbol-args]
+  {:pre [(#{1 2} (count symbol-args))]}
+  (try
+    (resolve (apply symbol symbol-args))
+    (catch Throwable _
+      nil)))
+
 (defn- do-rpc [vars [f & args]]
   (let [bad!  #(throw (ex-info
                         "RPC endpoint not found"
                         {:error-code :castra/rpc-endpoint-not-found
                          :endpoint   (or (safe-symbol f) f)}))
-        fun   (let [sym (safe-symbol f)]
-                (or (and sym (resolve sym))
-                    (bad!)))]
+        fun   (or (safe-resolve-symbol f) (bad!))]
     (when-not (contains? vars fun) (bad!))
     (apply fun args)))
 
 (defn- select-vars [nsname & {:keys [only exclude]}]
-  (let [to-var    #(resolve (symbol (str nsname) (str %)))
+  (let [to-var    #(safe-resolve-symbol (str nsname) (str %))
         to-vars   #(->> % (map to-var) (keep identity) set)
         var-pubs  #(do (require %) (vals (ns-publics %)))
         vars      (->> nsname var-pubs set)
