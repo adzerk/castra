@@ -11,10 +11,6 @@
     {:message (.getMessage e)
      :data    (ex-data e)}))
 
-(defn- csrf! []
-  (when-not (get-in *request* [:headers "x-castra-csrf"])
-    (throw (ex-info "Invalid CSRF token" {}))))
-
 (defn- safe-symbol
   "Like `clojure.core/symbol`, but if the provided value cannot be coerced into
    a symbol, returns nil instead of throwing an exception."
@@ -98,12 +94,10 @@
                 (headers req head {"Content-Type" "application/json;charset=utf-8"})
 
                 result
-                (do
-                  (csrf!)
-                  (let [parsed-req-body (expression body-keys req)]
-                    (when parsed-request-body-handler
-                      (parsed-request-body-handler parsed-req-body))
-                    (do-rpc (vars) parsed-req-body)))
+                (let [parsed-req-body (expression body-keys req)]
+                  (when parsed-request-body-handler
+                    (parsed-request-body-handler parsed-req-body))
+                  (do-rpc (vars) parsed-req-body))
 
                 d
                 (try (response
