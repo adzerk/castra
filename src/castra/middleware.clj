@@ -53,12 +53,23 @@
   (when-not (get-in *request* [:headers "x-castra-csrf"])
     (throw (ex-info "Invalid CSRF token" {}))))
 
+(defn- safe-symbol
+  "Like `clojure.core/symbol`, but if the provided value cannot be coerced into
+   a symbol, returns nil instead of throwing an exception."
+  [value]
+  (try
+    (symbol value)
+    (catch Throwable _
+      nil)))
+
 (defn- do-rpc [vars [f & args]]
   (let [bad!  #(throw (ex-info
                         "RPC endpoint not found"
                         {:error-code :castra/rpc-endpoint-not-found
-                         :endpoint   (symbol f)}))
-        fun   (or (resolve (symbol f)) (bad!))]
+                         :endpoint   (or (safe-symbol f) f)}))
+        fun   (let [sym (safe-symbol f)]
+                (or (and sym (resolve sym))
+                    (bad!)))]
     (when-not (contains? vars fun) (bad!))
     (apply fun args)))
 
