@@ -94,7 +94,14 @@
                 (headers req head {"Content-Type" "application/json;charset=utf-8"})
 
                 f
-                #(let [parsed-req-body (expression body-keys req)]
+                #(let [parsed-req-body
+                       (try
+                         (expression body-keys req)
+                         (catch Throwable e
+                           (throw (ex-info
+                                    "Error reading request body"
+                                    {:error-code :castra/read-error
+                                     :error      (ex->clj e)}))))]
                    (when parsed-request-body-handler
                      (parsed-request-body-handler parsed-req-body))
                    (do-rpc (vars) parsed-req-body))
